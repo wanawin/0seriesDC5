@@ -15,6 +15,8 @@ if 'filtered' not in st.session_state:
     st.session_state.filtered = []
 if 'final_pool' not in st.session_state:
     st.session_state.final_pool = []
+if 'formula_combos' not in st.session_state:
+    st.session_state.formula_combos = []
 
 # --- Step 1: User Inputs ---
 seed = st.text_input("Enter 5-digit seed:", max_chars=5)
@@ -38,7 +40,16 @@ if seed and cold_digits:
                 st.markdown("### Step 1: Full Enumeration")
                 all_combos = [tuple(f"{i:05d}") for i in range(100000)]
                 st.session_state.full_combos = all_combos
+
+                # Formula-generated combos (must contain at least 2 seed digits)
+                formula_combos = []
+                for combo in all_combos:
+                    if sum(d in seed_digits for d in combo) >= 2:
+                        formula_combos.append(combo)
+                st.session_state.formula_combos = formula_combos
+
                 st.info(f"Generated full 5-digit space: {len(all_combos)} combos ✅")
+                st.info(f"Formula-generated combos (≥2 seed digits): {len(formula_combos)} ✅")
                 if st.button("Proceed to Percentile Filter"):
                     st.session_state.step = 2
 
@@ -51,11 +62,19 @@ if seed and cold_digits:
                         filtered.append(combo)
                 st.session_state.filtered = filtered
                 st.info(f"After Percentile Filter: {len(filtered)} combos remain ✅")
-                if st.button("Proceed to Cold Digit Trap"):
+                if st.button("Proceed to Formula Comparison"):
                     st.session_state.step = 3
 
             if st.session_state.step == 3:
-                st.markdown("### Step 3: Cold Digit Trap")
+                st.markdown("### Step 3.5: Intersection with Formula-Generated Combos")
+                intersected = [c for c in st.session_state.filtered if c in st.session_state.formula_combos]
+                st.session_state.filtered = intersected
+                st.info(f"After Intersection Step: {len(intersected)} combos remain ✅")
+                if st.button("Proceed to Cold Digit Trap"):
+                    st.session_state.step = 4
+
+            if st.session_state.step == 4:
+                st.markdown("### Step 4: Cold Digit Trap")
                 final_pool = []
                 for combo in st.session_state.filtered:
                     if any(d in cold_digits_set for d in combo):
@@ -63,7 +82,7 @@ if seed and cold_digits:
                 st.session_state.final_pool = final_pool
                 st.success(f"After Cold Digit Trap: {len(final_pool)} combos remain ✅")
                 if st.button("Proceed to Manual Filters"):
-                    st.session_state.step = 4
+                    st.session_state.step = 5
 
             def apply_manual_filters(pool):
                 filters = [
@@ -91,19 +110,19 @@ if seed and cold_digits:
                         current_pool = [c for c in current_pool if func(c)]
                         st.write(f"{name} → {len(current_pool)} combos remain ✅")
                     if st.button("Skip to Trap v3"):
-                        st.session_state.step = 5
+                        st.session_state.step = 6
                         break
                 return current_pool
 
-            if st.session_state.step == 4:
-                st.markdown("### Step 4: Manual Filters")
+            if st.session_state.step == 5:
+                st.markdown("### Step 5: Manual Filters")
                 manual_filtered = apply_manual_filters(st.session_state.final_pool)
                 st.session_state.final_pool = manual_filtered
                 st.success(f"After Manual Filters: {len(manual_filtered)} combos remain ✅")
                 if st.button("Finish and Show Trap v3 Candidates"):
-                    st.session_state.step = 5
+                    st.session_state.step = 6
 
-            if st.session_state.step == 5:
+            if st.session_state.step == 6:
                 st.markdown("### Final Trap v3 Candidate Combos + Trap v3 Scores")
 
                 def trapv3_score(combo):
