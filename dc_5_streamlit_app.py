@@ -73,6 +73,20 @@ if seed and cold_digits:
                 if st.button("Proceed to Deduplication"):
                     st.session_state.step = 3.6
 
+            if st.session_state.step == 3.6:
+                st.markdown("### Step 3.6: Deduplication (Box Uniqueness)")
+                seen = set()
+                deduped = []
+                for combo in st.session_state.filtered:
+                    sorted_box = "".join(sorted(combo))
+                    if sorted_box not in seen:
+                        seen.add(sorted_box)
+                        deduped.append(combo)
+                st.session_state.filtered = deduped
+                st.info(f"After Deduplication: {len(deduped)} unique box combos remain ✅")
+                if st.button("Proceed to Cold Digit Trap"):
+                    st.session_state.step = 4
+
             
 
             if st.session_state.step == 4:
