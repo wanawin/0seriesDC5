@@ -19,19 +19,6 @@ if 'formula_combos' not in st.session_state:
     st.session_state.formula_combos = []
 
 # --- Step 1: User Inputs ---
-            if st.session_state.step == 3.6:
-                st.markdown("### Step 3.6: Deduplication (Box Uniqueness)")
-                seen = set()
-                deduped = []
-                for combo in st.session_state.filtered:
-                    sorted_box = "".join(sorted(combo))
-                    if sorted_box not in seen:
-                        seen.add(sorted_box)
-                        deduped.append(combo)
-                st.session_state.filtered = deduped
-                st.info(f"After Deduplication: {len(deduped)} unique box combos remain ✅")
-                if st.button("Proceed to Cold Digit Trap"):
-                    st.session_state.step = 4
 seed = st.text_input("Enter 5-digit seed:", max_chars=5)
 cold_digits = st.text_input("Enter 4 cold digits (comma-separated):")
 
