@@ -66,11 +66,26 @@ if seed and cold_digits:
                     st.session_state.step = 3
 
             if st.session_state.step == 3:
-                st.markdown("### Step 3.5: Intersection with Formula-Generated Combos")
-                intersected = [c for c in st.session_state.filtered if c in st.session_state.formula_combos]
-                st.session_state.filtered = intersected
-                st.info(f"After Intersection Step: {len(intersected)} combos remain ✅")
-                if st.button("Proceed to Cold Digit Trap"):
+    st.markdown("### Step 3.5: Intersection with Formula-Generated Combos")
+    intersected = [c for c in st.session_state.filtered if c in st.session_state.formula_combos]
+    st.session_state.filtered = intersected
+    st.info(f"After Intersection Step: {len(intersected)} combos remain ✅")
+    if st.button("Proceed to Deduplication"):
+        st.session_state.step = 3.6
+
+if st.session_state.step == 3.6:
+    st.markdown("### Step 3.6: Deduplication (Box Uniqueness)")
+    seen = set()
+    deduped = []
+    for combo in st.session_state.filtered:
+        sorted_box = "".join(sorted(combo))
+        if sorted_box not in seen:
+            seen.add(sorted_box)
+            deduped.append(combo)
+    st.session_state.filtered = deduped
+    st.info(f"After Deduplication: {len(deduped)} unique box combos remain ✅")
+    if st.button("Proceed to Cold Digit Trap"):
+        st.session_state.step = 4
                     st.session_state.step = 4
 
             if st.session_state.step == 4:
