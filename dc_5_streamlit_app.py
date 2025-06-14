@@ -87,16 +87,20 @@ if seed and cold_digits:
                 if st.button("Proceed to Cold Digit Trap"):
                     st.session_state.step = 4
 
-            
-
             if st.session_state.step == 4:
                 st.markdown("### Step 4: Cold Digit Trap")
                 final_pool = []
                 for combo in st.session_state.filtered:
                     if any(d in cold_digits_set for d in combo):
                         final_pool.append(combo)
+                # --- Auto Filter: Eliminate Triples, Quads, Quints ---
+                final_pool = [c for c in final_pool if max(Counter(c).values()) < 3]
+                # --- Auto Filter: Mirror Sum = Digit Sum ---
+                final_pool = [c for c in final_pool if sum(map(int, c)) != sum([9 - int(d) for d in c])]
+                # --- Auto Filter: All Same V-Trac Group ---
+                final_pool = [c for c in final_pool if len(set(int(d) % 5 for d in c)) > 1]
                 st.session_state.final_pool = final_pool
-                st.success(f"After Cold Digit Trap: {len(final_pool)} combos remain ✅")
+                st.success(f"After Cold Digit Trap + Auto Filters: {len(final_pool)} combos remain ✅")
                 if st.button("Proceed to Manual Filters"):
                     st.session_state.step = 5
 
