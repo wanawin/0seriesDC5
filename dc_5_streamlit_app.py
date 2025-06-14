@@ -129,7 +129,7 @@ if seed and cold_digits:
                     if st.checkbox(f"Apply: {name}"):
                         current_pool = [c for c in current_pool if func(c)]
                         st.write(f"{name} → {len(current_pool)} combos remain ✅")
-                    if st.button("Skip to Trap v3"):
+                    if st.button("Skip to Trap v3", key=name):
                         st.session_state.step = 6
                         break
                 return current_pool
