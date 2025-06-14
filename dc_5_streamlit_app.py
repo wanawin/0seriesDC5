@@ -36,16 +36,9 @@ if seed and cold_digits:
 
             if st.session_state.step == 1:
                 st.markdown("### Step 1: Full Enumeration")
-                digits = [str(i) for i in range(10)]
-                full_combos = set()
-                for triplet in itertools.product(digits, repeat=3):
-                    for pair in seed_pairs:
-                        combo = tuple(sorted([*pair, *triplet]))
-                        if combo.count(combo[0]) <= 2:
-                            full_combos.add(combo)
-
-                st.session_state.full_combos = list(set(full_combos))
-                st.info(f"Generated {len(st.session_state.full_combos)} 5-digit combinations (box unique). ✅")
+                all_combos = [tuple(f"{i:05d}") for i in range(100000)]
+                st.session_state.full_combos = all_combos
+                st.info(f"Generated full 5-digit space: {len(all_combos)} combos ✅")
                 if st.button("Proceed to Percentile Filter"):
                     st.session_state.step = 2
 
@@ -89,14 +82,17 @@ if seed and cold_digits:
                     ("Root Sum in Mirror of Combo Sum Digits", lambda c: str(sum(map(int, c)) % 9 or 9) not in [str(int(d)%10) for d in str(45-sum(map(int, c)))]),
                     ("Mirror Pair Block (e.g., 1 & 6)", lambda c: not any(set(p).issubset(set(c)) for p in [('1','6'),('2','7'),('3','8'),('4','9'),('0','5')])),
                     ("All 3 Least Frequent Digits", lambda c: not set(cold_digits_set).issubset(set(c))),
-                    ("All 3 Most Frequent Digits", lambda c: True),  # Placeholder
-                    ("Mirror Sum Parity Clash", lambda c: (sum(map(int, c)) % 2) == ((45 - sum(map(int, c))) % 2)),
+                    ("No Repeats of 0, 2, or 3", lambda c: not any(c.count(d) > 1 for d in ['0','2','3'])),
+                    ("Digit 4 in Position 5", lambda c: c[4] != '4')
                 ]
                 current_pool = pool
                 for name, func in filters:
-                    filtered = [c for c in current_pool if func(c)]
-                    st.write(f"{name} → {len(filtered)} combos remain ✅")
-                    current_pool = filtered
+                    if st.checkbox(f"Apply: {name}"):
+                        current_pool = [c for c in current_pool if func(c)]
+                        st.write(f"{name} → {len(current_pool)} combos remain ✅")
+                    if st.button("Skip to Trap v3"):
+                        st.session_state.step = 5
+                        break
                 return current_pool
 
             if st.session_state.step == 4:
