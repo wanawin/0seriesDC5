@@ -113,7 +113,7 @@ if seed and cold_digits:
                     ("Secondary Percentile Filter", lambda c: True),  # Placeholder, user-controlled
                     ("All Low Digits (0–3)", lambda c: not all(int(d) <= 3 for d in c)),
                     ("Digit Spread < 4", lambda c: max(map(int, c)) - min(map(int, c)) >= 4),
-                    ("Prime Digit Filter", lambda c: sum(1 for d in c if d in '2357') < 2),
+                    ("Prime Digit Filter", lambda c: len(set(int(d) for d in c if int(d) in {2, 3, 5, 7})) < 3),
                     ("Sum Ends in 0 or 5", lambda c: sum(map(int, c)) % 10 not in {0, 5}),
                     ("Consecutive Digit Count ≥ 3", lambda c: not any(int(c[i])+1 == int(c[i+1]) and int(c[i+1])+1 == int(c[i+2]) for i in range(3))),
                     ("High-End Digit Limit", lambda c: sum(1 for d in c if int(d) >= 8) < 2),
