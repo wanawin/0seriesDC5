@@ -115,7 +115,6 @@ if seed and cold_digits:
                     ("Digit Spread < 4", lambda c: max(map(int, c)) - min(map(int, c)) >= 4),
                     ("Prime Digit Filter", lambda c: len(set(int(d) for d in c if int(d) in {2, 3, 5, 7})) < 3),
                     ("Sum Ends in 0 or 5", lambda c: sum(map(int, c)) % 10 not in {0, 5}),
-                    ("Consecutive Digit Count ≥ 3", lambda c: not any(int(c[i])+1 == int(c[i+1]) and int(c[i+1])+1 == int(c[i+2]) for i in range(3))),
                     ("High-End Digit Limit", lambda c: sum(1 for d in c if int(d) >= 8) < 2),
                     ("Strict Mirror Pair Block", lambda c: not any(pair in ''.join(c) for pair in ['86','31','24','79','05'])),
                     ("Mirror Count < 2", lambda c: sum(d in '5016248379' for d in c) >= 2),
