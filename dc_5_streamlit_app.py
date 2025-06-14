@@ -93,12 +93,10 @@ if seed and cold_digits:
                 for combo in st.session_state.filtered:
                     if any(d in cold_digits_set for d in combo):
                         final_pool.append(combo)
-                # --- Auto Filter: Eliminate Triples, Quads, Quints ---
-                final_pool = [c for c in final_pool if max(Counter(c).values()) < 3]
-                # --- Auto Filter: Mirror Sum = Digit Sum ---
-                final_pool = [c for c in final_pool if sum(map(int, c)) != sum([9 - int(d) for d in c])]
-                # --- Auto Filter: All Same V-Trac Group ---
-                final_pool = [c for c in final_pool if len(set(int(d) % 5 for d in c)) > 1]
+                # --- Auto Filters ---
+                final_pool = [c for c in final_pool if max(Counter(c).values()) < 3]  # Eliminate Triples+ 
+                final_pool = [c for c in final_pool if sum(map(int, c)) != sum([9 - int(d) for d in c])]  # Mirror Sum ≠ Digit Sum
+                final_pool = [c for c in final_pool if len(set(int(d) % 5 for d in c)) > 1]  # All same V-Trac
                 st.session_state.final_pool = final_pool
                 st.success(f"After Cold Digit Trap + Auto Filters: {len(final_pool)} combos remain ✅")
                 if st.button("Proceed to Manual Filters"):
@@ -107,23 +105,28 @@ if seed and cold_digits:
             def apply_manual_filters(pool):
                 current_pool = pool
                 filters = [
-                    ("Mild Double-Double Elim", lambda c: len(set(c)) > 3),
-                    ("Sum Ends in 0 or 5", lambda c: sum(map(int, c)) % 5 != 0),
-                    ("Consecutive Digits ≥ 3", lambda c: not any(int(c[i])+1 == int(c[i+1]) and int(c[i+1])+1 == int(c[i+2]) for i in range(3))),
-                    ("Digit 9 Count ≥ 2", lambda c: c.count('9') < 2),
-                    ("All 5 V-Trac Groups Present", lambda c: len(set(int(d)%5 for d in c)) < 5),
-                    ("Only 2 V-Trac Groups Present", lambda c: len(set(int(d)%5 for d in c)) > 2),
-                    ("4+ of Same V-Trac Group", lambda c: max(Counter([int(d)%5 for d in c]).values()) < 4),
-                    ("Digit 4 Repeats", lambda c: c.count('4') < 2),
-                    ("Three of Same Digit", lambda c: max(Counter(c).values()) < 3),
-                    ("Triple Double Structure (A×3, B×2)", lambda c: not (sorted(Counter(c).values()) == [2, 3])),
-                    ("Sum = 8, 7, 9, 10, 32", lambda c: sum(map(int, c)) not in {7, 8, 9, 10, 32}),
-                    ("Palindromes", lambda c: list(c) != list(c)[::-1]),
-                    ("Root Sum in Mirror of Combo Sum Digits", lambda c: str(sum(map(int, c)) % 9 or 9) not in [str(int(d)%10) for d in str(45-sum(map(int, c)))]),
-                    ("Mirror Pair Block (e.g., 1 & 6)", lambda c: not any(set(p).issubset(set(c)) for p in [('1','6'),('2','7'),('3','8'),('4','9'),('0','5')])),
-                    ("All 3 Least Frequent Digits", lambda c: not set(cold_digits_set).issubset(set(c))),
-                    ("No Repeats of 0, 2, or 3", lambda c: not any(c.count(d) > 1 for d in ['0','2','3'])),
-                    ("Digit 4 in Position 5", lambda c: c[4] != '4')
+                    ("Quint Filter", lambda c: len(set(c)) > 1),
+                    ("Quad Filter", lambda c: max(Counter(c).values()) < 4),
+                    ("Triple Filter", lambda c: max(Counter(c).values()) < 3),
+                    ("Mild Double-Double Filter", lambda c: not (len(set(c)) == 4 and Counter(c).most_common(1)[0][1] == 2)),
+                    ("Double-Doubles Only", lambda c: not (sorted(Counter(c).values()) == [2, 2, 1])),
+                    ("Secondary Percentile Filter", lambda c: True),  # Placeholder, user-controlled
+                    ("All Low Digits (0–3)", lambda c: not all(int(d) <= 3 for d in c)),
+                    ("Digit Spread < 4", lambda c: max(map(int, c)) - min(map(int, c)) >= 4),
+                    ("Prime Digit Filter", lambda c: sum(1 for d in c if d in '2357') < 2),
+                    ("Sum Ends in 0 or 5", lambda c: sum(map(int, c)) % 10 not in {0, 5}),
+                    ("Consecutive Digit Count ≥ 3", lambda c: not any(int(c[i])+1 == int(c[i+1]) and int(c[i+1])+1 == int(c[i+2]) for i in range(3))),
+                    ("High-End Digit Limit", lambda c: sum(1 for d in c if int(d) >= 8) < 2),
+                    ("Strict Mirror Pair Block", lambda c: not any(pair in ''.join(c) for pair in ['86','31','24','79','05'])),
+                    ("Mirror Count < 2", lambda c: sum(d in '5016248379' for d in c) >= 2),
+                    ("V-Trac Group Limit", lambda c: max(Counter([int(d)%5 for d in c]).values()) < 4),
+                    ("All Same V-Trac Group", lambda c: len(set(int(d)%5 for d in c)) > 1),
+                    ("2 V-Trac Groups Only", lambda c: len(set(int(d)%5 for d in c)) != 2),
+                    ("Trailing Digit = Mirror Sum Digit", lambda c: c[-1] != str(sum([9 - int(d) for d in c]) % 10)),
+                    ("Sum Category Transition Filter", lambda c: True),  # Placeholder, user-controlled
+                    ("Reversible Mirror Pair Block", lambda c: not any(set(pair).issubset(set(c)) for pair in [('8','6'),('3','1'),('2','4'),('7','9'),('0','5')])),
+                    ("3+ Digits > 5 Filter", lambda c: sum(1 for d in c if int(d) > 5) < 3),
+                    ("Loose Mirror Digit Filter", lambda c: not any((9-int(d)) in map(int, c) for d in c))
                 ]
                 for i, (name, func) in enumerate(filters):
                     if st.checkbox(f"Apply: {name}", key=f"check_{i}"):
@@ -145,8 +148,8 @@ if seed and cold_digits:
                 st.markdown("### Final Trap v3 Candidate Combos + Trap v3 Scores")
 
                 def trapv3_score(combo):
-                    hot_digits = {'0', '1', '3'}  # Example
-                    due_digits = {'5', '6'}       # Example
+                    hot_digits = {'0', '1', '3'}
+                    due_digits = {'5', '6'}
                     cold_digits = cold_digits_set
                     prime_digits = {'2', '3', '5', '7'}
 
