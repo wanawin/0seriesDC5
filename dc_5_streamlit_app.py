@@ -1,12 +1,12 @@
-# DC-5 Manual Filter App — Full Integration Code
-
 import streamlit as st
 import itertools
 from collections import Counter
 
+# --- Setup ---
 st.set_page_config(page_title="DC-5 Prediction Tool", layout="wide")
 st.title("🎯 DC-5 Midday Prediction App — 0-Series Model")
 
+# --- Initialize session state ---
 if 'step' not in st.session_state:
     st.session_state.step = 1
 if 'full_combos' not in st.session_state:
@@ -18,6 +18,7 @@ if 'final_pool' not in st.session_state:
 if 'formula_combos' not in st.session_state:
     st.session_state.formula_combos = []
 
+# --- Step 1: User Inputs ---
 seed = st.text_input("Enter 5-digit seed:", max_chars=5)
 cold_digits = st.text_input("Enter 4 cold digits (comma-separated):")
 
@@ -27,7 +28,9 @@ if seed and cold_digits:
         if len(seed_digits) != 5 or not all(d.isdigit() for d in seed_digits):
             st.error("Seed must be exactly 5 digits.")
         else:
-            seed_pairs = list(set(["".join(sorted([a, b])) for a, b in itertools.combinations(seed_digits, 2)]))
+            seed_pairs = list(set(
+                ["".join(sorted([a, b])) for a, b in itertools.combinations(seed_digits, 2)]
+            ))
             cold_digits_set = set(cold_digits.split(","))
 
             st.success(f"✅ Seed pairs: {seed_pairs}")
@@ -38,6 +41,7 @@ if seed and cold_digits:
                 all_combos = [tuple(f"{i:05d}") for i in range(100000)]
                 st.session_state.full_combos = all_combos
 
+                # Formula-generated combos (must contain at least 2 seed digits)
                 formula_combos = []
                 for combo in all_combos:
                     if sum(d in seed_digits for d in combo) >= 2:
@@ -89,8 +93,11 @@ if seed and cold_digits:
                 for combo in st.session_state.filtered:
                     if any(d in cold_digits_set for d in combo):
                         final_pool.append(combo)
+                # --- Auto Filter: Eliminate Triples, Quads, Quints ---
                 final_pool = [c for c in final_pool if max(Counter(c).values()) < 3]
+                # --- Auto Filter: Mirror Sum = Digit Sum ---
                 final_pool = [c for c in final_pool if sum(map(int, c)) != sum([9 - int(d) for d in c])]
+                # --- Auto Filter: All Same V-Trac Group ---
                 final_pool = [c for c in final_pool if len(set(int(d) % 5 for d in c)) > 1]
                 st.session_state.final_pool = final_pool
                 st.success(f"After Cold Digit Trap + Auto Filters: {len(final_pool)} combos remain ✅")
@@ -98,38 +105,32 @@ if seed and cold_digits:
                     st.session_state.step = 5
 
             def apply_manual_filters(pool):
+                current_pool = pool
                 filters = [
-                    ("Quint Filter", lambda c: len(set(c)) != 1),
-                    ("Quad Filter", lambda c: sorted(Counter(c).values()) != [1, 4]),
-                    ("Triple Filter", lambda c: not (3 in Counter(c).values() and Counter(c).values().count(3) == 1 and len(set(c)) == 3)),
-                    ("Mild Double-Double Filter", lambda c: not (sorted(Counter(c).values()) == [1, 1, 2] and len(set(c)) == 4)),
-                    ("Double-Doubles Only", lambda c: sorted(Counter(c).values()) != [1, 2, 2]),
-                    ("All Low Digits (0–3)", lambda c: not all(int(d) <= 3 for d in c)),
-                    ("Digit Spread < 4", lambda c: max(map(int, c)) - min(map(int, c)) >= 4),
-                    ("Prime Digit Count ≥ 2", lambda c: sum(d in {'2', '3', '5', '7'} for d in c) < 2),
+                    ("Mild Double-Double Elim", lambda c: len(set(c)) > 3),
                     ("Sum Ends in 0 or 5", lambda c: sum(map(int, c)) % 5 != 0),
                     ("Consecutive Digits ≥ 3", lambda c: not any(int(c[i])+1 == int(c[i+1]) and int(c[i+1])+1 == int(c[i+2]) for i in range(3))),
-                    ("High-End Digit Limit (2+ digits ≥8)", lambda c: sum(int(d) >= 8 for d in c) < 2),
-                    ("Strict Mirror Pair Block", lambda c: True),
-                    ("Mirror Count < 2", lambda c: sum(d in {'0','1','2','3','4','5','6','7','8','9'} for d in c) >= 2),
+                    ("Digit 9 Count ≥ 2", lambda c: c.count('9') < 2),
+                    ("All 5 V-Trac Groups Present", lambda c: len(set(int(d)%5 for d in c)) < 5),
+                    ("Only 2 V-Trac Groups Present", lambda c: len(set(int(d)%5 for d in c)) > 2),
                     ("4+ of Same V-Trac Group", lambda c: max(Counter([int(d)%5 for d in c]).values()) < 4),
-                    ("All Same V-Trac Group", lambda c: len(set(int(d)%5 for d in c)) != 1),
-                    ("Only 2 V-Trac Groups", lambda c: len(set(int(d)%5 for d in c)) != 2),
-                    ("Trailing Digit = Mirror Sum Digit", lambda c: True),
-                    ("Sum Category Transition Filter", lambda c: True),
-                    ("Reversible Mirror Pair Block", lambda c: True),
-                    ("3+ Digits > 5", lambda c: sum(int(d) > 5 for d in c) < 3),
-                    ("Loose Mirror Digit Filter", lambda c: True),
-                    ("Secondary Percentile Filter", lambda c: True)
+                    ("Digit 4 Repeats", lambda c: c.count('4') < 2),
+                    ("Three of Same Digit", lambda c: max(Counter(c).values()) < 3),
+                    ("Triple Double Structure (A×3, B×2)", lambda c: not (sorted(Counter(c).values()) == [2, 3])),
+                    ("Sum = 8, 7, 9, 10, 32", lambda c: sum(map(int, c)) not in {7, 8, 9, 10, 32}),
+                    ("Palindromes", lambda c: list(c) != list(c)[::-1]),
+                    ("Root Sum in Mirror of Combo Sum Digits", lambda c: str(sum(map(int, c)) % 9 or 9) not in [str(int(d)%10) for d in str(45-sum(map(int, c)))]),
+                    ("Mirror Pair Block (e.g., 1 & 6)", lambda c: not any(set(p).issubset(set(c)) for p in [('1','6'),('2','7'),('3','8'),('4','9'),('0','5')])),
+                    ("All 3 Least Frequent Digits", lambda c: not set(cold_digits_set).issubset(set(c))),
+                    ("No Repeats of 0, 2, or 3", lambda c: not any(c.count(d) > 1 for d in ['0','2','3'])),
+                    ("Digit 4 in Position 5", lambda c: c[4] != '4')
                 ]
-                current_pool = pool
-                for name, func in filters:
-                    if st.checkbox(f"Apply: {name}"):
+                for i, (name, func) in enumerate(filters):
+                    if st.checkbox(f"Apply: {name}", key=f"check_{i}"):
                         current_pool = [c for c in current_pool if func(c)]
                         st.write(f"{name} → {len(current_pool)} combos remain ✅")
-                    if st.button("Skip to Trap v3", key=name):
-                        st.session_state.step = 6
-                        break
+                if st.button("Skip to Trap v3", key="trap_button"):
+                    st.session_state.step = 6
                 return current_pool
 
             if st.session_state.step == 5:
@@ -144,8 +145,8 @@ if seed and cold_digits:
                 st.markdown("### Final Trap v3 Candidate Combos + Trap v3 Scores")
 
                 def trapv3_score(combo):
-                    hot_digits = {'0', '1', '3'}
-                    due_digits = {'5', '6'}
+                    hot_digits = {'0', '1', '3'}  # Example
+                    due_digits = {'5', '6'}       # Example
                     cold_digits = cold_digits_set
                     prime_digits = {'2', '3', '5', '7'}
 
@@ -157,7 +158,15 @@ if seed and cold_digits:
                     primes = sum(1 for d in combo if d in prime_digits)
                     sandwich = int(combo == combo[::-1] or (combo[0] == combo[2] == combo[4]))
 
-                    score = round(hot * 1.5 + cold * 1.25 + due * 1.0 + neutral * 0.5 + primes * 1.0 + sandwich * 2.0, 2)
+                    score = round(
+                        hot * 1.5 +
+                        cold * 1.25 +
+                        due * 1.0 +
+                        neutral * 0.5 +
+                        primes * 1.0 +
+                        sandwich * 2.0,
+                        2
+                    )
                     return score
 
                 scored = [("".join(c), trapv3_score(c)) for c in st.session_state.final_pool]
