@@ -121,8 +121,7 @@ if seed and cold_digits:
                     ("V-Trac Group Limit", lambda c: max(Counter([int(d)%5 for d in c]).values()) < 4),
                     ("All Same V-Trac Group", lambda c: len(set(int(d)%5 for d in c)) > 1),
                     ("2 V-Trac Groups Only", lambda c: len(set(int(d)%5 for d in c)) != 2),
-                    ("Trailing Digit = Mirror Sum Digit", lambda c: c[-1] != str(sum([9 - int(d) for d in c]) % 10)),
-                    ("Sum Category Transition Filter", lambda c: True),  # Placeholder, user-controlled
+                                        ("Sum Category Transition Filter", lambda c: True),  # Placeholder, user-controlled
                     ("Reversible Mirror Pair Block", lambda c: not any(set(pair).issubset(set(c)) for pair in [('8','6'),('3','1'),('2','4'),('7','9'),('0','5')])),
                     ("3+ Digits > 5 Filter", lambda c: sum(1 for d in c if int(d) > 5) < 3),
                     ("Loose Mirror Digit Filter", lambda c: not any((9-int(d)) in map(int, c) for d in c))
