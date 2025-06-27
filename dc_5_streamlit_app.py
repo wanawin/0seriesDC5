@@ -1,11 +1,4 @@
 
-# ==============================
-# Sidebar Combo Count Ribbon (Top)
-# ==============================
-if seed:
-    st.sidebar.markdown("## 🎯 Remaining Combos")
-    st.sidebar.markdown(f"### `{len(session_pool)}` remaining after filters")
-
 import streamlit as st
 import os, unicodedata, re
 from itertools import product, combinations, groupby
@@ -17,16 +10,20 @@ try:
 except ImportError:
     LOGIPAR_AVAILABLE = False
 
-# Helper functions for parsing, normalizing, applying filters...
-# (Use your original helper functions unchanged here)
+# Sidebar inputs
+seed = st.sidebar.text_input("5-digit seed:")
+hot_digits = [d for d in st.sidebar.text_input("Hot digits (comma-separated):").replace(' ', '').split(',') if d]
+cold_digits = [d for d in st.sidebar.text_input("Cold digits (comma-separated):").replace(' ', '').split(',') if d]
+due_digits = [d for d in st.sidebar.text_input("Due digits (comma-separated):").replace(' ', '').split(',') if d]
+method = st.sidebar.selectbox("Generation Method:", ["1-digit", "2-digit pair"]) 
+enable_trap = st.sidebar.checkbox("Enable Trap V3 Ranking")
 
-# Example extended filter logic inside your main app:
+# Helper Functions (use original functions here)
 def apply_additional_filters(session_pool, label, logic, seed):
     removed = []
     if 'name type logic' in label.lower():
         return session_pool, []
 
-    # Handle digit sum equals X
     m_exact_sum = re.search(r'digit sum.*equals\s*(\d+)', logic, re.IGNORECASE)
     if m_exact_sum:
         target = int(m_exact_sum.group(1))
@@ -34,7 +31,6 @@ def apply_additional_filters(session_pool, label, logic, seed):
         removed = [c for c in session_pool if sum(int(d) for d in c) == target]
         return keep, removed
 
-    # Handle: seed contains digit X and combo must contain Y or Z
     m_exclusion = re.search(r'seed contains.*?(\d).*?combo.*?not contain.*?(\d).*?or.*?(\d)', logic, re.IGNORECASE)
     if m_exclusion:
         seed_digit = int(m_exclusion.group(1))
@@ -46,7 +42,6 @@ def apply_additional_filters(session_pool, label, logic, seed):
             removed = [c for c in session_pool if exclude_1 not in c and exclude_2 not in c]
             return keep, removed
 
-    # Handle consecutive digits >= N
     m_consec = re.search(r'consecutive digits\s*[>=]+\s*(\d+)', logic, re.IGNORECASE)
     if m_consec:
         n = int(m_consec.group(1))
@@ -60,7 +55,6 @@ def apply_additional_filters(session_pool, label, logic, seed):
                 keep.append(c)
         return keep, removed
 
-    # Optional: try logipar to evaluate logic expressions
     if LOGIPAR_AVAILABLE:
         try:
             parsed = logipar.parse(logic)
@@ -72,36 +66,69 @@ def apply_additional_filters(session_pool, label, logic, seed):
 
     return session_pool, []
 
-# In the filter loop section of your app:
-# session_pool is your active list of combos
-# Replace st.warning(...) fallback with:
+# Generation logic (placeholder)
+def generate_combinations(seed, method="2-digit pair"):
+    all_digits = '0123456789'
+    combos = set()
+    seed_str = str(seed)
+    if len(seed_str) < 2:
+        return []
+    if method == "1-digit":
+        for d in seed_str:
+            for p in product(all_digits, repeat=4):
+                combo = ''.join(sorted(d + ''.join(p)))
+                combos.add(combo)
+    else:
+        pairs = set(''.join(sorted((seed_str[i], seed_str[j])))
+                    for i in range(len(seed_str)) for j in range(i+1, len(seed_str)))
+        for pair in pairs:
+            for p in product(all_digits, repeat=3):
+                combo = ''.join(sorted(pair + ''.join(p)))
+                combos.add(combo)
+    return sorted(combos)
 
-keep, removed = apply_additional_filters(session_pool, label, logic, seed)
-if len(removed) > 0:
-    session_pool = keep
-    st.write(f"Filter '{label}' removed {len(removed)} combos.")
-else:
-    st.warning(f"Could not automatically apply filter logic for: '{label}'")
+# Now show combo count ribbon and apply logic
+if seed:
+    combos_initial = generate_combinations(seed, method)
+    session_pool = combos_initial.copy()
+    elimination_history = []
 
-# End of app logic...
+    # Sidebar ribbon
+    st.sidebar.markdown("## 🎯 Remaining Combos")
+    st.sidebar.markdown(f"### `{len(session_pool)}` after filters")
 
-# ==============================
-# Track and Display Per-Filter Eliminations
-# ==============================
-elimination_history = []
+    total_generated = len(combos_initial)
+    total_eliminated = total_generated - len(session_pool)
+    percent_eliminated = round((total_eliminated / total_generated) * 100, 1)
 
-# In your filter loop (replace or extend logic as needed):
-# After applying a filter and updating session_pool:
-elimination_history.append({
-    'Filter': label,
-    'Removed': len(removed),
-    'Remaining': len(session_pool)
-})
+    st.sidebar.markdown(f"**🔻 Eliminated:** `{total_eliminated}` ({percent_eliminated}%)")
 
-# At the bottom or in a sidebar expander
-if elimination_history:
-    st.sidebar.markdown("### 📋 Filter-by-Filter Summary")
-    for entry in elimination_history:
-        st.sidebar.markdown(
-            f"**{entry['Filter']}**: Removed `{entry['Removed']}`, Remaining `{entry['Remaining']}`"
-        )
+    # Placeholder manual filters to simulate tracking
+    sample_filters = [
+        {"name": "Sum = 10", "logic": "digit sum of the combination equals 10"},
+        {"name": "Seed Contains 2, Combo Must Contain 4 or 5", "logic": "if seed contains 2 and combo does not contain 4 or 5"}
+    ]
+
+    for pf in sample_filters:
+        label = pf['name']
+        logic = pf['logic']
+        keep, removed = apply_additional_filters(session_pool, label, logic, seed)
+        session_pool = keep
+        elimination_history.append({
+            'Filter': label,
+            'Removed': len(removed),
+            'Remaining': len(session_pool)
+        })
+
+    # Show filter-by-filter elimination tracking
+    if elimination_history:
+        st.sidebar.markdown("### 📋 Filter-by-Filter Summary")
+        for entry in elimination_history:
+            st.sidebar.markdown(
+                f"**{entry['Filter']}**: Removed `{entry['Removed']}`, Remaining `{entry['Remaining']}`"
+            )
+
+    st.write(f"Final remaining combos: {len(session_pool)}")
+    with st.expander("View remaining combinations"):
+        for c in session_pool[:100]:
+            st.write(c)
