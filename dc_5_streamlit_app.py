@@ -152,7 +152,7 @@ if seed:
     st.sidebar.markdown(f"**🔻 Eliminated:** `{total_eliminated}` ({round((total_eliminated / total_generated) * 100, 1)}%)")
 
     if parsed_entries:
-            for combo in session_pool:
+            for combo in combos:
         combo_digits = [int(d) for d in combo]
         eliminate = False
 
@@ -703,7 +703,7 @@ if seed:
         if not eliminate:
             survivors.append(combo)
 
-    st.sidebar.markdown("### 📋 Filter-by-Filter Summary")
+st.sidebar.markdown("### 📋 Filter-by-Filter Summary")
         for entry in elimination_history:
             st.sidebar.markdown(f"**{entry['Filter']}**: Removed `{entry['Removed']}`, Remaining `{entry['Remaining']}`")
 
