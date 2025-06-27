@@ -89,57 +89,47 @@ def generate_combinations(seed, method="2-digit pair"):
                 combos.add(combo)
     return sorted(combos)
 
-def apply_additional_filters(session_pool, label, logic, seed):
+def apply_additional_filters(session_pool, label, logic, seed_digits):
     removed = []
-    if 'name type logic' in label.lower():
-        return session_pool, []
-
     m_exact_sum = re.search(r'digit sum.*equals\s*(\d+)', logic, re.IGNORECASE)
     if m_exact_sum:
         target = int(m_exact_sum.group(1))
         keep = [c for c in session_pool if sum(int(d) for d in c) != target]
         removed = [c for c in session_pool if sum(int(d) for d in c) == target]
         return keep, removed
-
-    m_exclusion = re.search(r'seed contains.*?(\d).*?combo.*?not contain.*?(\d).*?or.*?(\d)', logic, re.IGNORECASE)
-    if m_exclusion:
-        seed_digit = int(m_exclusion.group(1))
-        exclude_1 = m_exclusion.group(2)
-        exclude_2 = m_exclusion.group(3)
-        seed_digits = [int(d) for d in seed if d.isdigit()]
-        if seed_digit in seed_digits:
-            keep = [c for c in session_pool if exclude_1 in c or exclude_2 in c]
-            removed = [c for c in session_pool if exclude_1 not in c and exclude_2 not in c]
+    m_seed_block = re.search(r'seed.*\[([0-9, ]+)\].*eliminate.*(even|odd)', logic, re.IGNORECASE)
+    if m_seed_block:
+        digits_needed = [int(x.strip()) for x in m_seed_block.group(1).split(',')]
+        target_parity = m_seed_block.group(2).lower()
+        if all(d in seed_digits for d in digits_needed):
+            if target_parity == "even":
+                keep = [c for c in session_pool if sum(int(d) for d in c) % 2 != 0]
+                removed = [c for c in session_pool if sum(int(d) for d in c) % 2 == 0]
+            elif target_parity == "odd":
+                keep = [c for c in session_pool if sum(int(d) for d in c) % 2 == 0]
+                removed = [c for c in session_pool if sum(int(d) for d in c) % 2 != 0]
             return keep, removed
-
-    m_consec = re.search(r'consecutive digits\s*[>=]+\s*(\d+)', logic, re.IGNORECASE)
-    if m_consec:
-        n = int(m_consec.group(1))
-        keep, removed = [], []
-        for c in session_pool:
-            digits = sorted(int(d) for d in c)
-            max_consec = max([len(list(g)) for k, g in groupby(enumerate(digits), lambda ix: ix[0] - ix[1])])
-            if max_consec >= n:
-                removed.append(c)
-            else:
-                keep.append(c)
-        return keep, removed
-
-    if LOGIPAR_AVAILABLE:
-        try:
-            parsed = logipar.parse(logic)
-            keep = [c for c in session_pool if not parsed.evaluate({'combo': c})]
-            removed = [c for c in session_pool if parsed.evaluate({'combo': c})]
+    m_old = re.search(r'seed.*?(\d.*?)(?:->|→).*?(even|odd)', logic, re.IGNORECASE)
+    if m_old:
+        digits_needed = [int(x.strip()) for x in re.findall(r'\d+', m_old.group(1))]
+        target_parity = m_old.group(2).lower()
+        if all(d in seed_digits for d in digits_needed):
+            if target_parity == "even":
+                keep = [c for c in session_pool if sum(int(d) for d in c) % 2 != 0]
+                removed = [c for c in session_pool if sum(int(d) for d in c) % 2 == 0]
+            elif target_parity == "odd":
+                keep = [c for c in session_pool if sum(int(d) for d in c) % 2 == 0]
+                removed = [c for c in session_pool if sum(int(d) for d in c) % 2 != 0]
             return keep, removed
-        except:
-            pass
-
     return session_pool, []
 
-# Streamlit UI
-st.title("DC-5 Midday Combo Filter App")
+st.title("🎯 DC-5 Midday Full Combo Filter App")
 
-seed = st.sidebar.text_input("5-digit seed:")
+st.sidebar.header("🔢 Required Inputs")
+seed = st.sidebar.text_input("5-digit previous seed (required):").strip()
+hot_digits = [d for d in st.sidebar.text_input("Hot digits (comma-separated):").replace(' ', '').split(',') if d]
+cold_digits = [d for d in st.sidebar.text_input("Cold digits (comma-separated):").replace(' ', '').split(',') if d]
+due_digits = [d for d in st.sidebar.text_input("Due digits (comma-separated):").replace(' ', '').split(',') if d]
 method = st.sidebar.selectbox("Generation Method:", ["1-digit", "2-digit pair"])
 
 uploaded = st.sidebar.file_uploader("Upload manual filters (.txt)", type=['txt'])
@@ -150,13 +140,13 @@ if uploaded is not None:
     st.sidebar.success(f"Loaded {len(parsed_entries)} filters")
 
 if seed:
+    seed_digits = [int(d) for d in seed if d.isdigit()]
     combos_initial = generate_combinations(seed, method)
     session_pool = combos_initial.copy()
     elimination_history = []
 
     st.sidebar.markdown("## 🎯 Remaining Combos")
     st.sidebar.markdown(f"### `{len(session_pool)}` after filters")
-
     total_generated = len(combos_initial)
     total_eliminated = total_generated - len(session_pool)
     st.sidebar.markdown(f"**🔻 Eliminated:** `{total_eliminated}` ({round((total_eliminated / total_generated) * 100, 1)}%)")
@@ -167,13 +157,9 @@ if seed:
             logic = pf.get('logic', '')
             show = st.sidebar.checkbox(f"{label}", key=f"filter_{idx}")
             if show:
-                keep, removed = apply_additional_filters(session_pool, label, logic, seed)
+                keep, removed = apply_additional_filters(session_pool, label, logic, seed_digits)
                 session_pool = keep
-                elimination_history.append({
-                    'Filter': label,
-                    'Removed': len(removed),
-                    'Remaining': len(session_pool)
-                })
+                elimination_history.append({'Filter': label, 'Removed': len(removed), 'Remaining': len(session_pool)})
 
     if elimination_history:
         st.sidebar.markdown("### 📋 Filter-by-Filter Summary")
