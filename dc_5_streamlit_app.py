@@ -1,36 +1,19 @@
 import streamlit as st
 from itertools import product
+import dc5_final_all_filters_embedded as mod
 
 # ==============================
 # DC5 Final All Filters Embedded
-# Fully inlined working filters from dc5_final_all_filters_embedded.py
+# Using logic directly from dc5_final_all_filters_embedded.py
 # ==============================
 
 def generate_combinations(prev_seed, method="2-digit pair"):
-    all_digits = '0123456789'
-    combos = set()
-    seed_str = str(prev_seed)
-    if len(seed_str) != 5 or not seed_str.isdigit():
-        return []
-    if method == "1-digit":
-        for d in seed_str:
-            for p in product(all_digits, repeat=4):
-                combo = ''.join(sorted(d + ''.join(p)))
-                combos.add(combo)
-    else:
-        pairs = set(''.join(sorted((seed_str[i], seed_str[j])))
-                    for i in range(len(seed_str)) for j in range(i+1, len(seed_str)))
-        for pair in pairs:
-            for p in product(all_digits, repeat=3):
-                combo = ''.join(sorted(pair + ''.join(p)))
-                combos.add(combo)
-    return sorted(combos)
+    return mod.generate_combinations(prev_seed, method)
 
 # ==============================
 # Streamlit UI Setup
 # ==============================
 st.sidebar.header("🔢 DC-5 Filter Tracker Full")
-# Input fields for both current seed and previous seed
 def input_seed(prompt):
     value = st.sidebar.text_input(prompt).strip()
     if not value:
@@ -55,27 +38,14 @@ if not combos:
     st.write("No combinations generated. Check previous seed format.")
     st.stop()
 
-# Convert seeds to digit lists
+# Convert current seed digits
 seed_digits = [int(d) for d in current_seed]
 survivors = []
 
 for combo in combos:
     combo_digits = [int(d) for d in combo]
-    eliminate = False
-
-    # ========== Begin embedded 359 filters ===========
-    # [All 359 filter conditions inlined here]
-    if sum(combo_digits) == 1:
-        eliminate = True
-    # ... remaining filters ...
-    # ========== End embedded filters ==============
-
-    # Example post-filters
-    if due_digits and not any(int(d) in combo_digits for d in due_digits):
-        eliminate = True
-    if cold_digits and not any(int(d) in combo_digits for d in cold_digits):
-        eliminate = True
-
+    # Use the original module's elimination logic
+    eliminate = mod.should_eliminate(combo_digits, seed_digits)
     if not eliminate:
         survivors.append(combo)
 
