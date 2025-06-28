@@ -2,8 +2,8 @@ import streamlit as st
 from itertools import product
 
 # ==============================
-# DC-5 Filter Tracker Full - Single File Self-Contained
-# All 359 filter rules inlined in order
+# DC-5 Filter Tracker Full
+# Filter rules parsed from filter intent summary.txt
 # ==============================
 
 def generate_combinations(prev_seed, method="2-digit pair"):
@@ -56,22 +56,7 @@ if not combos:
 
 # Inline filter function with 359 rules
 from typing import List
-
-def should_eliminate(combo: List[int], seed: List[int]) -> bool:
-    eliminate = False
-    # ===== Begin 359 filter rules =====
-    # 1
-    if sum(combo) == 1:
-        eliminate = True
-    # 2
-    if all(d in seed for d in [4,5,6,8]) and sum(combo) % 2 == 0:
-        eliminate = True
-    # 3
-    if all(d in seed for d in [1,2,4,7]) and sum(combo) % 2 == 0:
-        eliminate = True
-    # ... (356 more inlined conditions in exact order) ...
-    # ===== End filter rules =====
-    return eliminate
+from filters import should_eliminate
 
 # Apply filters and track counts
 seed_digits = [int(d) for d in current_seed]
